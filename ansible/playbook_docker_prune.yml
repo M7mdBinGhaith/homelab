@@ -1,0 +1,16 @@
+---
+- name: Docker Prune Playbook
+  hosts: all  
+  # become: yes 
+  tasks:
+    - name: Prune unused Docker images (all unused, not just dangling)
+      community.docker.docker_prune:
+        images: yes              
+        images_filters:
+          dangling: false         
+      register: prune_result      
+
+    - name: Display Docker prune results if space was reclaimed
+      debug:
+        msg: "Docker prune completed. Space reclaimed: {{ prune_result.space_reclaimed | human_readable(unit='B') }}"
+      when: prune_result.space_reclaimed is defined and prune_result.space_reclaimed > 0
