@@ -1,5 +1,11 @@
 # homelab
 
-Welcome to my homelab repository.
+My personal reference repository for homelab configurations, scripts, and documentation.
 
-This repository documents my homelab related configurations.
+* **Contains:** Config files (Docker, apps), automation (Ansible, scripts), setup notes.
+* **Core Tech:**
+    * Docker
+    * Proxmox
+    * pfSense
+    * TrueNAS
+* **Goal:** Quick access to working setups and notes for personal reference.

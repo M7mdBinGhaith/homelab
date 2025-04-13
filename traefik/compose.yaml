@@ -1,0 +1,53 @@
+version: "3.8"
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    ports:
+      - 80:80
+      - 443:443
+      - 81:81  # For external entrypoint (Using port redirection)
+      - 444:444 # For external entrypoint (Using port redirection)
+    environment:
+      CF_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token 
+      
+      TRAEFIK_DASHBOARD_CREDENTIALS: ${TRAEFIK_DASHBOARD_CREDENTIALS}
+    secrets:
+      - cf_api_token
+    env_file: .env # use .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /nfs/apps/traefik/data/traefik.yml:/traefik.yml:ro
+      - /nfs/apps/traefik/data/acme.json:/acme.json
+      - /nfs/apps/traefik/data/config.yml:/config.yml:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.rule=Host(`traefik-dashboard.local.domain.com`)
+      - traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_CREDENTIALS}
+      - traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
+      - traefik.http.routers.traefik.middlewares=traefik-https-redirect
+      - traefik.http.routers.traefik-secure.entrypoints=https
+      - traefik.http.routers.traefik-secure.rule=Host(`traefik-dashboard.local.domain.com`)
+      - traefik.http.routers.traefik-secure.middlewares=traefik-auth
+      - traefik.http.routers.traefik-secure.tls=true
+      - traefik.http.routers.traefik-secure.tls.certresolver=cloudflare
+      - traefik.http.routers.traefik-secure.tls.domains[0].main=local.domain.com
+      - traefik.http.routers.traefik-secure.tls.domains[0].sans=*.local.domain.com
+      - traefik.http.routers.traefik-secure.tls.domains[1].main=domain.com
+      - traefik.http.routers.traefik-secure.tls.domains[1].sans=*.domain.com
+      - traefik.http.routers.traefik-secure.service=api@internal
+      - traefik.http.middlewares.external-https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.external-https-redirect.redirectscheme.port=444
+secrets:
+  cf_api_token:
+    file: /nfs/apps/traefik/cf_api_token.txt
+networks:
+  proxy:
+    external: true
