@@ -1,7 +1,7 @@
 ---
 - name: Docker Prune Playbook
   hosts: all  
-  # become: yes 
+  become: yes 
   tasks:
     - name: Prune unused Docker images (all unused, not just dangling)
       community.docker.docker_prune:
