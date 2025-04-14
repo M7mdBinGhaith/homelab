@@ -4,7 +4,7 @@
   become: yes
   tasks:
     - name: Check if Docker is installed
-      command: "command -v docker"
+      shell: "command -v docker"
       register: docker_check
       ignore_errors: yes
       changed_when: false
