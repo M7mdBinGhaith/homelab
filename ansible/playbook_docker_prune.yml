@@ -1,16 +1,28 @@
 ---
 - name: Docker Prune Playbook
-  hosts: all  
-  become: yes 
+  hosts: all
+  become: yes
   tasks:
-    - name: Prune unused Docker images (all unused, not just dangling)
+    - name: Check if Docker is installed
+      command: "command -v docker"
+      register: docker_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Skip Docker prune if not installed
+      debug:
+        msg: "Docker is not installed on {{ inventory_hostname }}. Skipping prune."
+      when: docker_check.rc != 0
+
+    - name: Prune unused Docker images
       community.docker.docker_prune:
-        images: yes              
+        images: yes
         images_filters:
-          dangling: false         
-      register: prune_result      
+          dangling: false
+      register: prune_result
+      when: docker_check.rc == 0
 
     - name: Display Docker prune results if space was reclaimed
       debug:
-        msg: "Docker prune completed. Space reclaimed: {{ prune_result.space_reclaimed | human_readable(unit='B') }}"
-      when: prune_result.space_reclaimed is defined and prune_result.space_reclaimed > 0
+        msg: "Docker prune completed on {{ inventory_hostname }}. Space reclaimed: {{ prune_result.space_reclaimed | human_readable(unit='B') }}"
+      when: docker_check.rc == 0 and prune_result.space_reclaimed is defined and prune_result.space_reclaimed > 0
