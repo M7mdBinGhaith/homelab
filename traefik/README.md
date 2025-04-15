@@ -4,7 +4,7 @@
 Traefik Docker provider with Ports 80/443 (internal) + optional 81/444 (external).
 
 ## Requires
-* Docker / Docker Compose
+* Docker + Docker Compose
 * Cloudflare API Token (DNS Edit/Read Perms)
 * Network: `docker network create proxy`
 * Host dir for persistent data (e.g., `./traefik-data`)
@@ -13,7 +13,7 @@ Traefik Docker provider with Ports 80/443 (internal) + optional 81/444 (external
 ## Files Needed
 
 1.  **In Host Dir (`./traefik-data`):**
-    * `traefik.yml`: Configure entrypoints (http, https, http-external, https-external), docker provider (network: proxy), cert resolver (`cloudflare`, storage: `/acme.json`, email).
+    * `traefik.yml`: Configure entrypoints (http, https, http-external, https-external), docker provider (network: proxy), cert resolver (`cloudflare`, storage: `/acme.json`, email). 
     * `acme.json`: `touch ./traefik-data/acme.json && chmod 600 ./traefik-data/acme.json`
     * `cf_api_token.txt`: Paste Cloudflare Token string here.
 2.  **Next to `docker-compose.yml`:**
@@ -26,3 +26,7 @@ Traefik Docker provider with Ports 80/443 (internal) + optional 81/444 (external
 ```bash
 docker-compose up -d 
 ```
+
+## Notes
+* Healthchecks configured for all services
+* This is a tested, working configuration serving as reference
