@@ -1,0 +1,89 @@
+services:
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /nfs/apps/sonarr:/config
+      - /mnt/data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.local.domain.com`)
+      - traefik.http.routers.sonarr.entrypoints=https
+      - traefik.http.routers.sonarr.tls=true
+      - traefik.http.services.sonarr.loadbalancer.server.port=8989
+      - traefik.http.routers.sonarr.middlewares=middlewares-authentik@file
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      - proxy
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /nfs/apps/radarr:/config
+      - /mnt/data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.radarr.rule=Host(`radarr.local.domain.com`)
+      - traefik.http.routers.radarr.entrypoints=https
+      - traefik.http.routers.radarr.tls=true
+      - traefik.http.services.radarr.loadbalancer.server.port=7878
+      - traefik.http.routers.radarr.middlewares=middlewares-authentik@file
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      - proxy
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=022
+    volumes:
+      - /nfs/apps/prowlarr:/config
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.local.domain.com`)
+      - traefik.http.routers.prowlarr.entrypoints=https
+      - traefik.http.routers.prowlarr.tls=true
+      - traefik.http.services.prowlarr.loadbalancer.server.port=9696
+      - traefik.http.routers.prowlarr.middlewares=middlewares-authentik@file
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      - proxy
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /nfs/apps/bazarr:/config
+      - /mnt/data/Movies:/movies
+      - /mnt/data/Tvshows:/tv
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.bazarr.rule=Host(`bazarr.local.domain.com`)
+      - traefik.http.routers.bazarr.entrypoints=https
+      - traefik.http.routers.bazarr.tls=true
+      - traefik.http.services.bazarr.loadbalancer.server.port=6767
+      - traefik.http.routers.bazarr.middlewares=middlewares-authentik@file
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      - proxy
+networks:
+  proxy:
+    external: true
