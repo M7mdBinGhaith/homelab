@@ -29,4 +29,4 @@ docker-compose up -d
 * Deploys Sonarr, Radarr, Prowlarr, and Bazarr.
 * Exposed via Traefik HTTPS at respective hostnames.
 * Uses **Authentik** for auth by default.
-* Watchtower enabled for automatic updates. This is optional;
+* Watchtower enabled for automatic updates.
