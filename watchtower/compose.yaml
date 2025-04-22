@@ -6,7 +6,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - TZ=Asia/Dubai
+      - TZ=Etc/UTC
       - WATCHTOWER_POLL_INTERVAL=21600
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_LABEL_ENABLE=true
