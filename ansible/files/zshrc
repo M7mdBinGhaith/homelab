@@ -88,7 +88,7 @@ fi
 
 # Docker container quick access function
 dsh() {
-  container=$(docker ps --format "{{\"{{.Names}}\"}}" | fzf)
+  container=$(docker ps --format "table {{.Names}}" | tail -n +2 | fzf)
   if [ -n "$container" ]; then
     docker exec -it $container sh -c "bash || ash || sh"
   fi
@@ -96,7 +96,7 @@ dsh() {
 
 # Docker container log viewing function
 dlogf() {
-  container=$(docker ps --format "{{\"{{.Names}}\"}}" | fzf)
+  container=$(docker ps --format "table {{.Names}}" | tail -n +2 | fzf)
   if [ -n "$container" ]; then
     docker logs -f $container
   fi
