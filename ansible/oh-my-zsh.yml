@@ -52,7 +52,7 @@
       become: true 
     - name: Download and set up zshrc configuration
       shell: |
-        curl -fsSL "https://raw.githubusercontent.com/m7mdbinghaith/homelab/testing/ansible/files/zshrc" -o ~/.zshrc && \
+        curl -fsSL "https://raw.githubusercontent.com/m7mdbinghaith/homelab/main/ansible/files/zshrc" -o ~/.zshrc && \
         chmod 644 ~/.zshrc
       args:
         creates: "{{ ansible_env.HOME }}/.zshrc"
