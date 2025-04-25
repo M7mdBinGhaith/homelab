@@ -49,6 +49,7 @@
       user:
         name: "{{ ansible_env.USER }}"
         shell: /bin/zsh
+      become: true
 
     - name: Download and set up zshrc configuration
       shell: |
