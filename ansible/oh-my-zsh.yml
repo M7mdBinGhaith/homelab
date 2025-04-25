@@ -45,12 +45,11 @@
       become: false
       become_user: "{{ ansible_env.USER }}"
 
-    - name: Set zsh as default shell
+    - name: Set zsh as default shell for connecting user
       user:
-        name: "{{ ansible_env.USER }}"
-        shell: /bin/zsh
-      become: true
-
+        name: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+        shell: /bin/zsh 
+      become: true 
     - name: Download and set up zshrc configuration
       shell: |
         curl -fsSL "https://raw.githubusercontent.com/m7mdbinghaith/homelab/testing/ansible/files/zshrc" -o ~/.zshrc && \
