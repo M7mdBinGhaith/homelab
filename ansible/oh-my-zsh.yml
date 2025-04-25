@@ -1,0 +1,193 @@
+---
+- name: Install and configure Oh My Zsh
+  hosts: all
+  become: true
+  tasks:
+    - name: Install required packages
+      package:
+        name:
+          - zsh
+          - git
+          - curl
+          - fd-find
+        state: present
+
+    - name: Install Oh My Zsh
+      shell: |
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+      args:
+        creates: "{{ ansible_env.HOME }}/.oh-my-zsh"
+
+    - name: Install zsh-autosuggestions plugin
+      shell: |
+        git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+      args:
+        creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+
+    - name: Install zsh-syntax-highlighting plugin
+      shell: |
+        git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+      args:
+        creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+
+    - name: Install FZF
+      shell: |
+        git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+        ~/.fzf/install --all
+      args:
+        creates: "{{ ansible_env.HOME }}/.fzf"
+
+    - name: Set zsh as default shell
+      user:
+        name: "{{ ansible_env.USER }}"
+        shell: /bin/zsh
+
+    - name: Download zshrc configuration
+      get_url:
+        url: "https://raw.githubusercontent.com/m7mdbinghaith/homelab/testing/ansible/files/zshrc"
+        dest: "{{ ansible_env.HOME }}/.zshrc"
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+        mode: '0644'
+
+    - name: Create .zshrc with custom configuration
+      copy:
+        content: |
+          # Path to your oh-my-zsh installation
+          export ZSH="$HOME/.oh-my-zsh"
+
+          # Set theme
+          ZSH_THEME="robbyrussell"
+
+          # Enable command auto-correction
+          ENABLE_CORRECTION="true"
+
+          # Display red dots while waiting for completion
+          COMPLETION_WAITING_DOTS="true"
+
+          # Plugins
+          plugins=(
+            git
+            docker
+            zsh-autosuggestions
+            zsh-syntax-highlighting
+            sudo
+            kubectl
+            command-not-found
+            history
+            dirhistory
+            colored-man-pages
+            copypath
+            extract
+            fzf
+            z
+          )
+
+          source $ZSH/oh-my-zsh.sh
+
+          # Docker aliases
+          alias d='docker'
+          alias dc='docker compose'
+          alias dps='docker ps'
+          alias dpsa='docker ps -a'
+          alias di='docker images'
+          alias dex='docker exec -it'
+          alias dlog='docker logs'
+          alias dprune='docker system prune -af'
+          alias dstop='docker stop $(docker ps -q)'
+          alias drm='docker rm'
+          alias drmi='docker rmi'
+          alias dlogs='docker logs -f'
+          alias dnet='docker network ls'
+          alias dvol='docker volume ls'
+          alias dinspect='docker inspect'
+          alias dport='docker port'
+          alias dstats='docker stats'
+          alias dbuild='docker build -t'
+          alias dpull='docker pull'
+          alias dpush='docker push'
+
+          # Enable case-insensitive auto-completion
+          zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+          # Increase auto-completion cache
+          zstyle ':completion:*' use-cache on
+          zstyle ':completion:*' cache-path ~/.zsh/cache
+
+          # Auto-completion menu (select with arrow keys)
+          zstyle ':completion:*' menu select
+
+          # History configuration
+          HISTSIZE=10000
+          SAVEHIST=10000
+          setopt appendhistory
+          setopt sharehistory
+          setopt incappendhistory
+
+          # Auto-suggestions from history
+          ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+          ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+
+          # Make sure Docker completion is properly loaded
+          if [ -f /usr/share/zsh/vendor-completions/_docker ]; then
+            source /usr/share/zsh/vendor-completions/_docker
+          fi
+
+          # FZF configuration for improved searching
+          if [ -f ~/.fzf.zsh ]; then
+            source ~/.fzf.zsh
+            export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --preview 'echo {}' --preview-window down:3:hidden:wrap --bind '?:toggle-preview'"
+            export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git"
+            export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+          fi
+
+          # Docker container quick access function
+          dsh() {
+            container=$(docker ps --format "{{.Names}}" | fzf)
+            if [ -n "$container" ]; then
+              docker exec -it $container sh -c "bash || ash || sh"
+            fi
+          }
+
+          # Docker container log viewing function
+          dlogf() {
+            container=$(docker ps --format "{{.Names}}" | fzf)
+            if [ -n "$container" ]; then
+              docker logs -f $container
+            fi
+          }
+
+          # Terminal title to show current directory
+          precmd() {
+            print -Pn "\e]0;%~\a"
+          }
+
+          # Improved cd command with directory listing
+          function cd {
+            builtin cd "$@" && ls -la
+          }
+
+          # Check for Docker updates weekly
+          DOCKER_UPDATE_CHECK=$(date +%s)
+          DOCKER_UPDATE_FREQ=604800 # 1 week in seconds
+
+          docker_update_check() {
+            CURRENT_TIME=$(date +%s)
+            if (( CURRENT_TIME - DOCKER_UPDATE_CHECK > DOCKER_UPDATE_FREQ )); then
+              echo "Checking for Docker updates..."
+              docker version > /dev/null 2>&1
+              if [ $? -eq 0 ]; then
+                docker pull docker/dockerfile:1.0 > /dev/null 2>&1
+                DOCKER_UPDATE_CHECK=$CURRENT_TIME
+              fi
+            fi
+          }
+          docker_update_check
+
+          # Enable command runtime tracking
+          REPORTTIME=10
+          TIMEFMT="%U user %S system %P cpu %*E total"
+        dest: "{{ ansible_env.HOME }}/.zshrc"
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+        mode: '0644' 
