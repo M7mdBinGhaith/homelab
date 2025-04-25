@@ -19,6 +19,7 @@
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh"
       become: false
       become_user: "{{ ansible_env.USER }}"
+      state: present
 
     - name: Install zsh-autosuggestions plugin
       shell: |
@@ -27,6 +28,7 @@
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
       become: false
       become_user: "{{ ansible_env.USER }}"
+      state: present
 
     - name: Install zsh-syntax-highlighting plugin
       shell: |
@@ -35,7 +37,7 @@
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
       become: false
       become_user: "{{ ansible_env.USER }}"
-
+      state: present
     - name: Install FZF
       shell: |
         git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
@@ -44,12 +46,12 @@
         creates: "{{ ansible_env.HOME }}/.fzf"
       become: false
       become_user: "{{ ansible_env.USER }}"
-
+      state: present
     - name: Set zsh as default shell
       user:
         name: "{{ ansible_env.USER }}"
         shell: /bin/zsh
-
+        state: present
     - name: Download zshrc configuration
       get_url:
         url: "https://raw.githubusercontent.com/m7mdbinghaith/homelab/testing/ansible/files/zshrc"
@@ -59,3 +61,4 @@
         mode: '0644'
       become: false
       become_user: "{{ ansible_env.USER }}"
+      state: present
