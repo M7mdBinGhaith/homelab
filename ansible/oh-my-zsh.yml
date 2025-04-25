@@ -17,18 +17,21 @@
         sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
       args:
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh"
+      become: false
 
     - name: Install zsh-autosuggestions plugin
       shell: |
         git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
       args:
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+      become: false
 
     - name: Install zsh-syntax-highlighting plugin
       shell: |
         git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
       args:
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+      become: false
 
     - name: Install FZF
       shell: |
@@ -36,6 +39,7 @@
         ~/.fzf/install --all
       args:
         creates: "{{ ansible_env.HOME }}/.fzf"
+      become: false
 
     - name: Set zsh as default shell
       user:
@@ -49,3 +53,4 @@
         owner: "{{ ansible_env.USER }}"
         group: "{{ ansible_env.USER }}"
         mode: '0644'
+      become: false
