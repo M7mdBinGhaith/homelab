@@ -18,6 +18,7 @@
       args:
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh"
       become: false
+      become_user: "{{ ansible_env.USER }}"
 
     - name: Install zsh-autosuggestions plugin
       shell: |
@@ -25,6 +26,7 @@
       args:
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
       become: false
+      become_user: "{{ ansible_env.USER }}"
 
     - name: Install zsh-syntax-highlighting plugin
       shell: |
@@ -32,6 +34,7 @@
       args:
         creates: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
       become: false
+      become_user: "{{ ansible_env.USER }}"
 
     - name: Install FZF
       shell: |
@@ -40,6 +43,7 @@
       args:
         creates: "{{ ansible_env.HOME }}/.fzf"
       become: false
+      become_user: "{{ ansible_env.USER }}"
 
     - name: Set zsh as default shell
       user:
@@ -54,3 +58,4 @@
         group: "{{ ansible_env.USER }}"
         mode: '0644'
       become: false
+      become_user: "{{ ansible_env.USER }}"
