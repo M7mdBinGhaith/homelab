@@ -47,7 +47,6 @@ Required environment variables:
 
 Sample configurations for each service are provided in the `config/` directory:
 * Prometheus scrape configurations
-* InfluxDB setup scripts
 * Loki and Promtail configurations
 * Telegraf input/output plugins
 
