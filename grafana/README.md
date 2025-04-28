@@ -1,6 +1,6 @@
 # Grafana Monitoring Stack
 
-A Docker Compose configuration for Grafana and its associated monitoring services.
+A Docker Compose configuration for Grafana and its associated monitoring services behind Traefik reverse proxy.
 
 ## Execution Context
 
@@ -50,6 +50,9 @@ Sample configurations for each service are provided in the `config/` directory:
 * Loki and Promtail configurations
 * Telegraf input/output plugins
 
+## Architecture
+
+> **Note:** This setup exposes Grafana behind a **Traefik** reverse proxy.
 
 ## Requires
 * Docker + Docker Compose
