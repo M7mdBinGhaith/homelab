@@ -1,0 +1,159 @@
+services:
+ 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    user: 1000:1000
+    volumes:
+      - /nfs/apps/monitoring/grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://${DOMAIN_GRAFANA}
+    networks:
+      - proxy
+      - monitoring
+    depends_on:
+      - influxdb
+      - loki
+      - prometheus
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.grafana.entrypoints=http
+      - traefik.http.routers.grafana.rule=Host(`${DOMAIN_GRAFANA}`)
+      - traefik.http.middlewares.grafana-https-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.grafana.middlewares=grafana-https-redirect
+      - traefik.http.routers.grafana-secure.entrypoints=https
+      - traefik.http.routers.grafana-secure.rule=Host(`${DOMAIN_GRAFANA}`)
+      - traefik.http.routers.grafana-secure.tls=true
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+      - traefik.docker.network=proxy
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    user: 1000:1000
+    volumes:
+      - /nfs/apps/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - /nfs/apps/monitoring/prometheus/data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.enable-lifecycle
+    ports:
+      - 9090:9090
+    networks:
+      - monitoring
+    
+
+    
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.rootfs=/rootfs
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    ports:
+      - 9100:9100
+    networks:
+      - monitoring
+  
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - 8080:8080
+    networks:
+      - monitoring
+  
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    restart: unless-stopped
+    user: 1000:1000
+    volumes:
+      - /nfs/apps/monitoring/influxdb:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_ADMIN_USER:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_ADMIN_PASSWORD:-adminpassword}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG:-monitoring}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET:-metrics}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_ADMIN_TOKEN:-mytoken}
+    ports:
+      - 8086:8086
+    networks:
+      - monitoring
+  
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    user: 1000:1000
+    volumes:
+      - /nfs/apps/monitoring/loki:/etc/loki
+      - /nfs/apps/monitoring/loki-data:/data/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+      -validation.allow-structured-metadata=false
+    ports:
+      - 3100:3100
+    networks:
+      - monitoring
+  
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - /nfs/apps/monitoring/promtail:/etc/promtail
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    depends_on:
+      - loki
+    networks:
+      - monitoring
+  
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    restart: unless-stopped
+    user: 1000:${DOCKER_GID}
+    volumes:
+      - /nfs/apps/monitoring/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - influxdb
+    environment:
+      - INFLUX_TOKEN=${INFLUXDB_ADMIN_TOKEN:-mytoken}
+      - INFLUX_ORG=${INFLUXDB_ORG:-monitoring}
+      - INFLUX_BUCKET=${INFLUXDB_BUCKET:-metrics}
+      - INFLUX_URL=http://influxdb:8086
+    networks:
+      - monitoring
+networks:
+  monitoring:
+    name: monitoring
+    driver: bridge
+  proxy:
+    external: true
