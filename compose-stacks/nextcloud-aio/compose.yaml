@@ -1,0 +1,23 @@
+services:
+  nextcloud:
+    image: nextcloud/all-in-one:latest
+    restart: always
+    container_name: nextcloud-aio-mastercontainer
+    volumes:
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - 8080:8080
+    environment:
+      - APACHE_PORT=11000
+      - NEXTCLOUD_DATADIR=/mnt/Mirrors/nextcloud-aio/data
+      - NEXTCLOUD_MOUNT=/mnt/Mirrors/nextcloud-aio
+      - NEXTCLOUD_MEMORY_LIMIT=4096M
+    networks:
+      - nextcloud-aio
+networks:
+  nextcloud-aio:
+    external: true
+volumes:
+  nextcloud_aio_mastercontainer:
+    name: nextcloud_aio_mastercontainer
