@@ -1,0 +1,75 @@
+services:
+  reactive-resume-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    networks:
+      - internal
+    volumes:
+      - reactive_resume_db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chrome:
+    image: ghcr.io/browserless/chromium:v2.18.0
+    restart: unless-stopped
+    networks:
+      - internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      TIMEOUT: 10000
+      CONCURRENT: 10
+      TOKEN: ${CHROME_TOKEN}
+      EXIT_ON_HEALTH_FAILURE: "true"
+      PRE_REQUEST_HEALTH_CHECK: "true"
+
+  app:
+    image: amruthpillai/reactive-resume:latest
+    restart: unless-stopped
+    networks:
+      - proxy
+      - internal
+    depends_on:
+      - reactive-resume-db
+      - chrome
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      PUBLIC_URL: ${PUBLIC_URL}
+      STORAGE_URL: https://${STORAGE_ENDPOINT}/${STORAGE_BUCKET}
+      CHROME_TOKEN: ${CHROME_TOKEN}
+      CHROME_URL: ws://chrome:3000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@reactive-resume-db:5432/${POSTGRES_DB}
+      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      MAIL_FROM: ${MAIL_FROM}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
+      STORAGE_PORT: 443
+      STORAGE_REGION: ${STORAGE_REGION}
+      STORAGE_BUCKET: ${STORAGE_BUCKET}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
+      STORAGE_USE_SSL: "true"
+      STORAGE_SKIP_BUCKET_CHECK: "false"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.reactive-resume.rule=Host(`reactive-resume.local.domain.com`)
+      - traefik.http.routers.reactive-resume.entrypoints=https
+      - traefik.http.routers.reactive-resume.tls=true
+      - traefik.http.services.reactive-resume.loadbalancer.server.port=3000
+      - traefik.docker.network=proxy
+networks:
+  proxy:
+    external: true
+  internal:
+    name: reactive-resume-internal
+
+volumes:
+  reactive_resume_db_data:
