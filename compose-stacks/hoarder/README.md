@@ -1,4 +1,4 @@
-# Hoarder Docker Compose
+# Karakeep (Previously **Hoarder**) Docker Compose
 
 ## Overview
 Working Hoarder configuration behind Traefik with Chrome and Meilisearch integration.
