@@ -9,3 +9,6 @@ My personal reference repository for homelab configurations, scripts, and docume
     * pfSense
     * TrueNAS
 * **Goal:** Quick access to working setups and notes for personal reference.
+
+## Resources
+- 📖 [Documentation site](https://m7mdbinghaith.github.io)
