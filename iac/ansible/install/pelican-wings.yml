@@ -1,0 +1,273 @@
+---
+- name: Install Pelican Wings
+  hosts: all
+  become: yes
+  vars:
+    wings_install_dir: /etc/pelican
+    wings_data_dir: /var/lib/pelican
+    # Required configuration from Panel
+    panel_url: ""              # e.g., http://192.168.1.100 or https://panel.example.com
+    wings_token: ""            # Token from Panel admin 
+    node_id: ""                # Node ID number from Panel
+    allow_insecure: false      # Set to true for HTTP connections
+
+  tasks:
+    # Configuration validation
+    - name: Ensure all required variables are set
+      assert:
+        that:
+          - panel_url is defined and panel_url != ""
+          - wings_token is defined and wings_token != ""
+          - node_id is defined and node_id != ""
+        fail_msg: |
+          ERROR: Wings configuration parameters missing!
+          
+          Required from Panel Admin:
+          1. Go to Panel Admin -> Nodes -> Create/View Node
+          2. Get the following information:
+             - Panel URL (e.g., http://192.168.1.100)
+             - Configuration Token (starts with peli_)
+             - Node ID number
+          
+          Run with parameters:
+          ansible-playbook wings-install.yml \
+            -e "panel_url=http://192.168.1.100" \
+            -e "wings_token=peli_your_token_here" \
+            -e "node_id=1" \
+            -e "allow_insecure=true"
+        
+    
+    # Dependencies installation
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Perform system upgrade
+      apt:
+        upgrade: dist
+      ignore_errors: yes
+
+    - name: Install basic dependencies
+      apt:
+        name:
+          - curl
+          - ca-certificates
+          - gnupg2
+          - sudo
+          - apt-transport-https
+          - software-properties-common
+          - lsb-release
+        state: present
+
+      # Install Docker using convenience script
+    - name: Install Docker using convenience script
+      shell: curl -sSL https://get.docker.com/ | CHANNEL=stable sh
+      args:
+        creates: /usr/bin/docker
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Verify Docker installation
+      shell: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Display Docker version
+      debug:
+        msg: "Docker installed: {{ docker_version.stdout }}"
+    
+    - name: check docker service status
+      systemd:
+        name: docker
+      register: docker_status
+
+    - name: Display Docker service status
+      debug:
+        msg: "Docker service status: {{ docker_status.status.ActiveState }}"
+
+    # Install Wings
+    - name: Create Wings directory
+      file:
+        path: "{{ wings_install_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Detect architecture for Wings download
+      shell: |
+        arch=$(uname -m)
+        if [[ "$arch" == "x86_64" ]]; then
+          echo "amd64"
+        elif [[ "$arch" == "aarch64" ]]; then
+          echo "arm64"
+        else
+          echo "amd64"  # Default fallback
+        fi
+      register: wings_arch
+      changed_when: false
+
+    - name: Display Wings architecture
+      debug:
+        msg: "Wings architecture detected: {{ wings_arch.stdout }} (system: {{ ansible_machine }})"
+
+    - name: Download Wings binary
+      get_url:
+        url: "https://github.com/pelican-dev/wings/releases/latest/download/wings_linux_{{ wings_arch.stdout }}"
+        dest: /usr/local/bin/wings
+        mode: '0755'
+        owner: root
+        group: root
+      register: wings_download
+      retries: 3
+      delay: 5
+
+    - name: Verify Wings installation
+      shell: /usr/local/bin/wings version
+      register: wings_version
+      changed_when: false
+
+    - name: Display Wings version
+      debug:
+        msg: "Wings installed: {{ wings_version.stdout }}"
+
+    # Configure Wings using built-in command
+    - name: Run Wings configuration command
+      shell: |
+        /usr/local/bin/wings configure \
+          --panel-url {{ panel_url }} \
+          --token {{ wings_token }} \
+          --node {{ node_id }} \
+          {{ '--allow-insecure' if allow_insecure else '' }}
+      args:
+        chdir: "{{ wings_install_dir }}"
+      register: wings_configure_result
+
+    - name: Display Wings configuration result
+      debug:
+        msg: |
+          Wings configuration completed:
+          {{ wings_configure_result.stdout }}
+          {{ wings_configure_result.stderr if wings_configure_result.stderr else '' }}
+
+    - name: Verify Wings configuration file exists
+      stat:
+        path: "{{ wings_install_dir }}/config.yml"
+      register: config_file_check
+
+    - name: Fail if configuration file was not created
+      fail:
+        msg: "ERROR: Wings configuration failed - config.yml not found!"
+      when: not config_file_check.stat.exists
+
+    # Create Wings Service
+    - name: Create Wings systemd service
+      copy:
+        dest: /etc/systemd/system/wings.service
+        content: |
+          [Unit]
+          Description=Wings Daemon
+          After=docker.service
+          Requires=docker.service
+          PartOf=docker.service
+
+          [Service]
+          User=root
+          WorkingDirectory={{ wings_install_dir }}
+          LimitNOFILE=4096
+          PIDFile=/var/run/wings/daemon.pid
+          ExecStart=/usr/local/bin/wings
+          Restart=on-failure
+          StartLimitInterval=180
+          StartLimitBurst=30
+          RestartSec=5s
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    # Storage Setup
+    - name: Create Wings data directory
+      file:
+        path: "{{ wings_data_dir }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Create Wings volumes directory
+      file:
+        path: "{{ wings_data_dir }}/volumes"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    # 8. Enable Swap 
+    - name: Check current GRUB configuration
+      shell: grep -q "swapaccount=1" /etc/default/grub || echo "not_found"
+      register: grub_check
+      changed_when: false
+      failed_when: false
+
+    - name: Enable swap accounting in GRUB
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="swapaccount=1"'
+        backup: yes
+      register: grub_updated
+      when: grub_check.stdout == "not_found"
+
+    - name: Update GRUB configuration
+      shell: update-grub
+      when: grub_updated is changed
+
+    - name: Notify about reboot requirement
+      debug:
+        msg: |
+          WARNING: GRUB configuration updated for swap accounting.
+          System reboot is required for changes to take effect.
+          Run: sudo systemctl reboot
+      when: grub_updated is changed
+
+    # Start Wings Service
+    - name: Enable and start Wings service
+      systemd:
+        name: wings
+        state: started
+        enabled: yes
+
+    - name: Wait for Wings to start
+      pause:
+        seconds: 5
+
+    - name: Check Wings service status
+      systemd:
+        name: wings
+      register: wings_status
+
+    - name: Display Wings service status
+      debug:
+        msg: "Wings service status: {{ wings_status.status.ActiveState }}"
+
+    # Summary
+    - name: summary
+      debug:
+        var: completion_message
+      vars:
+        completion_message: |
+          Wings installation completed successfully!
+          
+          Configuration Used:
+          - Panel URL: {{ panel_url }}
+          - Node ID: {{ node_id }}
