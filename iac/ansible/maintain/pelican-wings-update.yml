@@ -1,0 +1,52 @@
+- name: Update Wings Daemon
+  hosts: all
+  become: yes
+  vars:
+    wings_dir: /usr/local/bin/wings
+
+  tasks:
+    - name: Check if Wings is installed
+      stat:
+        path: "{{ wings_dir }}"
+      register: wings_check
+
+    - name: fail if Wings not found
+      fail:
+        msg: "Wings daemon not found at {{ wings_dir }}"
+      when: not wings_check.stat.exists 
+
+    - name: get current wings version
+      shell: wings version | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+[^[:space:]]*'
+      register: current_version
+    
+    - name: Get latest Wings version from GitHub
+      uri:
+        url: https://api.github.com/repos/pelican-dev/wings/releases/latest
+        method: GET
+        return_content: yes
+      register: latest_release
+
+    - name: Extract latest version number
+      set_fact:
+        latest_version: "{{ latest_release.json.tag_name }}"
+    
+    - name: compare current and latest versions
+      debug:
+        msg: "Current version: {{ current_version.stdout }}, Latest version: {{ latest_version }}"
+    
+    - name: Show message if already up to date
+      debug:
+        msg: "Wings is already up to date. No update needed."
+      when: current_version.stdout == latest_version
+
+    - name: Stop playbook if already up to date
+      meta: end_play
+      when: current_version.stdout == latest_version
+
+    - name: run update command
+      shell: wings update
+
+    - name: restart wings daemon
+      systemd:
+        name: wings
+        state: restarted
