@@ -1,0 +1,61 @@
+---
+- name: Update Pelican Panel
+  hosts: all
+  become: yes
+  vars:
+    pelican_dir: /var/www/pelican
+    
+  tasks:
+    - name: Check if Pelican is installed
+      stat:
+        path: "{{ pelican_dir }}/artisan"
+      register: pelican_check
+
+    - name: Fail if Pelican not found
+      fail:
+        msg: "Pelican Panel not found at {{ pelican_dir }}"
+      when: not pelican_check.stat.exists
+
+    - name: Put application in maintenance mode
+      shell: cd {{ pelican_dir }} && php artisan down
+
+    - name: Download and extract latest Pelican release
+      shell: |
+        cd {{ pelican_dir }}
+        curl -L https://github.com/pelican-dev/panel/releases/latest/download/panel.tar.gz | sudo tar -xzv
+
+    - name: Set file permissions on storage and cache
+      shell: sudo chmod -R 755 {{ pelican_dir }}/storage/* {{ pelican_dir }}/bootstrap/cache
+
+    - name: Install Composer dependencies
+      shell: |
+        cd {{ pelican_dir }}
+        sudo COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader
+
+    - name: Create storage symbolic link
+      shell: cd {{ pelican_dir }} && php artisan storage:link
+
+    - name: Clear view cache
+      shell: cd {{ pelican_dir }} && php artisan view:clear
+
+    - name: Clear config cache
+      shell: cd {{ pelican_dir }} && php artisan config:clear
+
+    - name: Optimize Filament
+      shell: cd {{ pelican_dir }} && php artisan filament:optimize
+
+    - name: Run database migrations
+      shell: cd {{ pelican_dir }} && php artisan migrate --seed --force
+
+    - name: Set proper ownership to www-data
+      shell: sudo chown -R www-data:www-data {{ pelican_dir }}
+
+    - name: Restart queue workers
+      shell: cd {{ pelican_dir }} && php artisan queue:restart
+
+    - name: Bring application back online
+      shell: cd {{ pelican_dir }} && php artisan up
+
+    - name: Display completion message
+      debug:
+        msg: "Pelican Panel update completed successfully!"

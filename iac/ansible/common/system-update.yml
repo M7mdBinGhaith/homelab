@@ -1,0 +1,16 @@
+---
+- name: System Update s
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      ignore_errors: yes
+
+    - name: Perform system upgrade
+      apt:
+        upgrade: dist
+      ignore_errors: yes
