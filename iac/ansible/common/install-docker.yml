@@ -1,28 +1,25 @@
----
-- name: Install Docker on Debian
-  hosts: all
-  become: yes 
-
-  tasks:
+# This playbook installs Docker on a Linux host using the convenience script provided by Docker.
     - name: check if Docker is already installed
       stat:
         path: /usr/bin/docker
       register: docker_installed
-    - name: fail if Docker already installed
-      fail:
+    - name: alert if Docker is already installed
+      debug:
         msg: "Docker is already installed on this host."
       when: docker_installed.stat.exists
-      
+    
     - name: Install Docker using convenience script
       shell: curl -sSL https://get.docker.com/ | CHANNEL=stable sh
       args:
         creates: /usr/bin/docker
+      when: not docker_installed.stat.exists
 
     - name: Start and enable Docker service
       systemd:
         name: docker
         state: started
         enabled: yes
+      when: not docker_installed.stat.exists
 
     - name: Verify Docker installation
       shell: docker --version

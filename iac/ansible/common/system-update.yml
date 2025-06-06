@@ -1,9 +1,4 @@
----
-- name: System Update s
-  hosts: all
-  become: yes
-
-  tasks:
+# This playbook updates the apt cache and performs a system upgrade on Debian-based systems.
     - name: Update apt cache
       apt:
         update_cache: yes

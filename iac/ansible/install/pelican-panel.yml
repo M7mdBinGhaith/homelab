@@ -9,17 +9,9 @@
     pelican_install_dir: /var/www/pelican
     
   tasks:
-    # 1. Install Dependencies
+    # 1. Update system and install dependencies
     - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      ignore_errors: yes
-
-    - name: Perform system upgrade
-      apt:
-        upgrade: dist
-      ignore_errors: yes
+      import_tasks: ../common/system-update.yml
 
     - name: Install required packages for adding repositories
       apt:
