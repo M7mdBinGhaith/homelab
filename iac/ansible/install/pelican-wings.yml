@@ -38,15 +38,8 @@
         
     
     # Dependencies installation
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-
-    - name: Perform system upgrade
-      apt:
-        upgrade: dist
-      ignore_errors: yes
+    - name: Uppdate apt cache
+      import_tasks: ../common/system-update.yml
 
     - name: Install basic dependencies
       apt:
@@ -62,33 +55,7 @@
 
       # Install Docker using convenience script
     - name: Install Docker using convenience script
-      shell: curl -sSL https://get.docker.com/ | CHANNEL=stable sh
-      args:
-        creates: /usr/bin/docker
-
-    - name: Start and enable Docker service
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-
-    - name: Verify Docker installation
-      shell: docker --version
-      register: docker_version
-      changed_when: false
-
-    - name: Display Docker version
-      debug:
-        msg: "Docker installed: {{ docker_version.stdout }}"
-    
-    - name: check docker service status
-      systemd:
-        name: docker
-      register: docker_status
-
-    - name: Display Docker service status
-      debug:
-        msg: "Docker service status: {{ docker_status.status.ActiveState }}"
+      import_tasks: ../common/install-docker.yml
 
     # Install Wings
     - name: Create Wings directory
