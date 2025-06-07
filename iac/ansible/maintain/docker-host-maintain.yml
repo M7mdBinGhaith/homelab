@@ -4,41 +4,11 @@
   become: yes  
   
   tasks:
-    # System Update Tasks
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      ignore_errors: yes
-      register: apt_cache_result
-      
-    - name: Perform full system upgrade
-      apt:
-        upgrade: dist
-      ignore_errors: yes
-      register: upgrade_result
-        
-    - name: Check if reboot is required
-      register: reboot_required
-      stat:
-        path: /var/run/reboot-required
-        
-    - name: Notify if apt cache update failed
-      debug:
-        msg: "WARNING: apt cache update failed on {{ inventory_hostname }}"
-      when: apt_cache_result.failed | default(false)
-        
-    - name: Notify if system upgrade failed  
-      debug:
-        msg: "WARNING: system upgrade failed on {{ inventory_hostname }}"
-      when: upgrade_result.failed | default(false)
-        
-    - name: Notify if reboot is needed
-      debug:
-        msg: "Reboot is required to complete system updates"
-      when: reboot_required.stat.exists
-
-    # Docker Cleanup Tasks
+    # System Update Task
+    - name: Run system update
+      import_tasks: ../common/system-update.yml
+    
+    # Docker Cleanup Task
     - name: Check if Docker command exists
       shell: "command -v docker"
       register: docker_check

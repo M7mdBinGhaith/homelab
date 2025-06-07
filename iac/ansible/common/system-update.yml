@@ -1,11 +1,35 @@
-# This playbook updates the apt cache and performs a system upgrade on Debian-based systems.
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      ignore_errors: yes
+---
+- name: print package manager
+  debug:
+    msg: "Detected package manager: {{ ansible_pkg_mgr | default('unknown') }}"
 
-    - name: Perform system upgrade
-      apt:
-        upgrade: dist
-      ignore_errors: yes
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  ignore_errors: yes
+  when: ansible_pkg_mgr in ['apt', 'apt-get']
+
+- name: Perform system upgrade
+  apt:
+    upgrade: dist
+  ignore_errors: yes
+  when: ansible_pkg_mgr in ['apt', 'apt-get']
+
+- name: Apt based distribution
+  debug:
+    msg: "This is {{ ansible_pkg_mgr }} package manager, apt update performed."
+  when: ansible_pkg_mgr in ['apt', 'apt-get']
+
+- name: dnf update
+  dnf:
+    name: '*'
+    state: latest
+    update_cache: yes
+  ignore_errors: yes
+  when: ansible_pkg_mgr in ['dnf', 'yum', 'dnf5']
+
+- name: say this is fedora or centos
+  debug:
+    msg: "This is {{ ansible_pkg_mgr }} package manager, dnf update performed."
+  when: ansible_pkg_mgr in ['dnf', 'yum', 'dnf5']

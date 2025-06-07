@@ -38,7 +38,7 @@
         
     
     # Dependencies installation
-    - name: Uppdate apt cache
+    - name: system update
       import_tasks: ../common/system-update.yml
 
     - name: Install basic dependencies
