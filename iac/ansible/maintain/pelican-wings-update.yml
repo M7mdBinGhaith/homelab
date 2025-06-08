@@ -1,6 +1,7 @@
 - name: Update Wings Daemon
   hosts: all
   become: yes
+  remote_user: "{{ ansible_user | default('debian') }}"
   vars:
     wings_dir: /usr/local/bin/wings
 
