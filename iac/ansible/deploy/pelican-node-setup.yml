@@ -1,0 +1,283 @@
+---
+- name: Create Pelican Panel Node and Install Wings
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    pelican_url: "{{ pelican_url }}"
+    pelican_api_key: "{{ pelican_api_key }}"
+    node_name: "{{ node_name }}"
+    node_fqdn: "{{ node_fqdn }}"
+    node_memory: "{{ node_memory }}"
+    node_disk: "{{ node_disk }}"
+    node_cpu: "{{ node_cpu | default(0) }}"
+    node_scheme: "{{ node_scheme | default('http') }}"
+    node_location_id: "{{ node_location_id | default(1) }}"
+    wings_target_host: "{{ wings_target_host | default(node_fqdn) }}"
+    
+  tasks:
+    - name: Validate required variables
+      fail:
+        msg: "Missing required variable: {{ item }}"
+      when: vars[item] is not defined or vars[item] == ""
+      loop:
+        - pelican_url
+        - pelican_api_key
+        - node_name
+        - node_fqdn
+        - node_memory
+        - node_disk
+
+    - name: Test API connectivity
+      uri:
+        url: "{{ pelican_url }}/api/application/nodes"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ pelican_api_key }}"
+          Accept: "application/json"
+        status_code: 200
+      register: api_test
+
+    - name: Create new node
+      uri:
+        url: "{{ pelican_url }}/api/application/nodes"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ pelican_api_key }}"
+          Accept: "application/json"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ node_name }}"
+          location_id: "{{ node_location_id }}"
+          fqdn: "{{ node_fqdn }}"
+          scheme: "{{ node_scheme }}"
+          behind_proxy: false
+          public: true
+          memory: "{{ node_memory }}"
+          disk: "{{ node_disk }}"
+          cpu: "{{ node_cpu }}"
+          daemon_listen: 8080
+          daemon_sftp: 2022
+          memory_overallocate: 0
+          disk_overallocate: 0
+          cpu_overallocate: 0
+          upload_size: 100
+        status_code: 201
+      register: created_node
+
+    - name: Get node configuration token
+      uri:
+        url: "{{ pelican_url }}/api/application/nodes/{{ created_node.json.attributes.id }}/configuration"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ pelican_api_key }}"
+          Accept: "application/json"
+        status_code: 200
+      register: node_config
+
+    - name: Display node creation results
+      debug:
+        msg: |
+          Node created successfully
+          Name: {{ created_node.json.attributes.name }}
+          ID: {{ created_node.json.attributes.id }}
+          FQDN: {{ created_node.json.attributes.fqdn }}
+          Wings Token: {{ node_config.json.token }}
+
+    - name: Add Wings target host to inventory
+      add_host:
+        name: "{{ wings_target_host }}"
+        groups: wings_servers
+        ansible_user: "{{ wings_ansible_user | default('debian') }}"
+        panel_url: "{{ pelican_url }}"
+        wings_token: "{{ node_config.json.token }}"
+        pelican_api_key: "{{ pelican_api_key }}"
+        node_id: "{{ created_node.json.attributes.id }}"
+        allow_insecure: "{{ true if node_scheme == 'http' else false }}"
+
+- name: Install Pelican Wings
+  hosts: wings_servers
+  become: yes
+  gather_facts: yes
+  vars:
+    wings_install_dir: /etc/pelican
+    wings_data_dir: /var/lib/pelican
+
+  tasks:
+    - name: Validate Wings configuration
+      assert:
+        that:
+          - panel_url is defined and panel_url != ""
+          - wings_token is defined and wings_token != ""
+          - node_id is defined and node_id != ""
+        fail_msg: "ERROR: Wings configuration parameters missing"
+
+    - name: System update
+      import_tasks: ../common/system-update.yml
+
+    - name: Install Docker
+      import_tasks: ../common/install-docker.yml
+
+    - name: Install basic dependencies
+      apt:
+        name:
+          - curl
+          - ca-certificates
+        state: present
+
+    - name: Create Wings directory
+      file:
+        path: "{{ wings_install_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Detect system architecture
+      set_fact:
+        wings_arch: "{{ 'arm64' if ansible_machine == 'aarch64' else 'amd64' }}"
+
+    - name: Download Wings binary
+      get_url:
+        url: "https://github.com/pelican-dev/wings/releases/latest/download/wings_linux_{{ wings_arch }}"
+        dest: /usr/local/bin/wings
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Test connectivity to panel
+      uri:
+        url: "{{ panel_url }}/api/application/nodes"
+        method: GET
+        timeout: 10
+        status_code: [200, 401, 403]
+      register: connectivity_test
+      ignore_errors: yes
+
+    - name: Check for existing Wings configuration
+      stat:
+        path: "{{ wings_install_dir }}/config.yml"
+      register: existing_config
+
+    - name: Prevent overwriting existing Wings config
+      fail:
+        msg: |
+          ERROR: Wings configuration already exists at {{ wings_install_dir }}/config.yml
+          
+          To overwrite existing configuration, run with:
+          -e "wings_force_reconfigure=true"
+          
+          This will completely replace the existing Wings configuration.
+      when: 
+        - existing_config.stat.exists
+        - not (wings_force_reconfigure | default(false) | bool)
+
+    - name: Display configuration overwrite warning
+      debug:
+        msg: |
+          WARNING: Existing Wings configuration will be overwritten
+          File: {{ wings_install_dir }}/config.yml
+          Force reconfigure enabled: {{ wings_force_reconfigure | default(false) }}
+      when: 
+        - existing_config.stat.exists
+        - wings_force_reconfigure | default(false) | bool
+
+    - name: Remove existing Wings configuration
+      file:
+        path: "{{ wings_install_dir }}/config.yml"
+        state: absent
+      when: existing_config.stat.exists
+
+    - name: Configure Wings with API key
+      shell: |
+        timeout 60 /usr/local/bin/wings configure \
+          --panel-url {{ panel_url }} \
+          --token {{ pelican_api_key }} \
+          --node {{ node_id }} \
+          {{ '--allow-insecure' if allow_insecure else '' }} \
+          --override
+      args:
+        chdir: "{{ wings_install_dir }}"
+      register: wings_configure_result
+      failed_when: wings_configure_result.rc != 0 and wings_configure_result.rc != 124
+
+    - name: Verify Wings configuration
+      stat:
+        path: "{{ wings_install_dir }}/config.yml"
+      register: config_check
+      failed_when: not config_check.stat.exists
+
+    - name: Create Wings systemd service
+      copy:
+        dest: /etc/systemd/system/wings.service
+        content: |
+          [Unit]
+          Description=Wings Daemon
+          After=docker.service
+          Requires=docker.service
+          PartOf=docker.service
+
+          [Service]
+          User=root
+          WorkingDirectory={{ wings_install_dir }}
+          LimitNOFILE=4096
+          PIDFile=/var/run/wings/daemon.pid
+          ExecStart=/usr/local/bin/wings
+          Restart=on-failure
+          StartLimitInterval=180
+          StartLimitBurst=30
+          RestartSec=5s
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Create Wings data directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ wings_data_dir }}"
+        - "{{ wings_data_dir }}/volumes"
+
+    - name: Enable swap accounting in GRUB
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="swapaccount=1"'
+        backup: yes
+      register: grub_updated
+
+    - name: Update GRUB
+      shell: update-grub
+      when: grub_updated is changed
+
+    - name: Start and enable Wings service
+      systemd:
+        name: wings
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Check Wings status
+      systemd:
+        name: wings
+      register: wings_status
+    
+    - name: restart when wings was already configured previously
+      systemd:
+        name: wings
+        state: restarted
+      register: wings_restart
+      when: existing_config.stat.exists
+
+    - name: Installation complete
+      debug:
+        msg: |
+          Wings installation completed
+          Panel: {{ panel_url }}
+          Node ID: {{ node_id }}
+          Status: {{ wings_status.status.ActiveState }}
+          {% if grub_updated is changed %}
+          Reboot required for swap accounting: sudo reboot
+          {% endif %}
