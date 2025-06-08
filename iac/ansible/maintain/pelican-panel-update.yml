@@ -2,6 +2,7 @@
 - name: Update Pelican Panel
   hosts: all
   become: yes
+  remote_user: "{{ ansible_user | default('debian') }}"
   vars:
     pelican_dir: /var/www/pelican
     
