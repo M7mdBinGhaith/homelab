@@ -14,51 +14,52 @@ source "proxmox-iso" "debian12" {
   insecure_skip_tls_verify = true
   node                     = var.proxmox_node
 
-  vm_name                  = "debian12-template"
-  template_description     = "Debian 12 Template"
-  vm_id                    = 9400
-  memory                   = 2048
-  cores                    = 2
-  sockets                  = 1
-  cpu_type                = "host"
-  os                      = "l26"
-  qemu_agent              = true
+  vm_name              = var.vm_name
+  template_description = var.template_description
+  vm_id                = var.vm_id
+  memory               = var.memory
+  cores                = var.cores
+  sockets              = var.sockets
+  cpu_type             = var.cpu_type
+  os                   = var.os
+  qemu_agent           = true
 
   # SSH configuration
-  ssh_username            = "debian"
-  ssh_password            = "debian"
-  ssh_timeout             = "30m"
-  ssh_handshake_attempts  = 100
-  ssh_wait_timeout        = "30m"
+  ssh_username           = var.ssh_username
+  ssh_password           = var.ssh_password
+  ssh_timeout            = var.ssh_timeout
+  ssh_handshake_attempts = var.ssh_handshake_attempts
+  ssh_wait_timeout       = var.ssh_wait_timeout
 
   network_adapters {
-    bridge = "vmbr0"
-    model  = "virtio"
+    bridge   = var.network_bridge
+    model    = var.network_model
+    vlan_tag = var.vlan_tag
   }
 
   disks {
     type         = "scsi"
-    storage_pool = "local-zfs"
-    disk_size    = "20G"
-    format       = "raw"
+    storage_pool = var.storage_pool
+    disk_size    = var.disk_size
+    format       = var.disk_format
   }
 
   # Cloud-Init Drive
-  cloud_init           = true
-  cloud_init_storage_pool = "local-zfs"
+  cloud_init              = true
+  cloud_init_storage_pool = var.storage_pool
 
   # ISO configuration
   boot_iso {
-    iso_file = "local:iso/debian-12.10.0-amd64-netinst.iso"
+    iso_file = var.iso_file
   }
 
   # Boot configuration
-  boot_wait = "10s"
+  boot_wait = var.boot_wait
   boot_command = [
     "<esc><wait>",
     "auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg ",
-    "hostname=debian12 ",
-    "domain=local ",
+    "hostname=${var.hostname} ",
+    "domain=${var.domain} ",
     "interface=auto ",
     "vga=788 noprompt quiet ",
     "<enter>"
