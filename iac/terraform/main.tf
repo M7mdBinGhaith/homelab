@@ -1,54 +1,64 @@
 terraform {
   required_providers {
     proxmox = {
-      source = "telmate/proxmox"
-      version = "3.0.1-rc8"
+      source = "bpg/proxmox"
+      version = "~> 0.66"
     }
   }
 }
 
 provider "proxmox" {
-  pm_api_url         = var.pm_api_url
-  pm_api_token_id    = var.pm_api_token_id
-  pm_api_token_secret = var.pm_api_token
-  pm_tls_insecure    = var.pm_tls_insecure
+  endpoint = var.pm_api_url
+  api_token = "${var.pm_api_token_id}=${var.pm_api_token}"
+  insecure = var.pm_tls_insecure
 }
 
-resource "proxmox_vm_qemu" "vm" {
+resource "proxmox_virtual_environment_vm" "vm" {
   count = var.num_vms
 
-  vmid = var.start_vmid + count.index
-  name = "${var.vm_name_prefix}-${var.start_vmid + count.index}"
-  target_node = var.vm_node
+  vm_id     = var.start_vmid + count.index
+  name      = "${var.vm_name_prefix}-${var.start_vmid + count.index}"
+  node_name = var.vm_node
 
-  clone = "debian12-template"
+  clone {
+    vm_id = var.vm_template
+  }
 
-  memory = var.vm_memory
-  cores  = var.vm_cores
-  sockets = var.vm_sockets
+  memory {
+    dedicated = var.vm_memory
+  }
+  
+  cpu {
+    cores   = var.vm_cores
+    sockets = var.vm_sockets
+  }
 
   disk {
-    type = "disk"
-    storage = var.vm_disk_storage
-    size = var.vm_disk_size
-    slot = "scsi0"
+    datastore_id = var.vm_disk_storage
+    interface    = "scsi0"
+    size         = var.vm_disk_size_gb
   }
 
-  network {
-    model = var.vm_network_model
-    bridge = var.vm_network_bridge
-    tag = var.vm_network_vlan_tag
-    id = 0
+  network_device {
+    bridge      = var.vm_network_bridge
+    model       = var.vm_network_model
+    vlan_id     = var.vm_network_vlan_tag
   }
 
-  # BIOS and boot configuration
-  bios = "seabios"
-  boot = "order=scsi0;net0"
-  bootdisk = "scsi0"
-  scsihw = "virtio-scsi-pci"
-  
-  agent = 1
-  sshkeys = var.vm_ssh_keys
+  agent {
+    enabled = true
+  }
+
+  initialization {
+    datastore_id = "local-zfs"
+    user_account {
+      keys     = [trimspace(var.vm_ssh_keys)]
+      username = "debian"
+    }
+  }
+
+  stop_on_destroy = true
+  timeout_stop_vm = 60
 }
 
 output "vm_info" {
@@ -56,7 +66,9 @@ output "vm_info" {
   value = {
     for i in range(var.num_vms) :
     "${var.vm_name_prefix}-${var.start_vmid + i}" => {
-      vmid = proxmox_vm_qemu.vm[i].vmid
+      vm_id = proxmox_virtual_environment_vm.vm[i].vm_id
+      name  = proxmox_virtual_environment_vm.vm[i].name
+      node  = proxmox_virtual_environment_vm.vm[i].node_name
     }
   }
 }

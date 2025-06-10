@@ -1,23 +1,29 @@
-pm_api_url      = "https://your_proxmox:8006/api2/json"
-pm_api_token_id = "your_api_token_id"
-pm_api_token    = "your_api_token"
-pm_tls_insecure = true
+# Proxmox API Configuration
+pm_api_url      = "https://YOUR_PROXMOX_IP:8006/api2/json"
+pm_api_token_id = "your-user@pam!your-token-name"
+pm_api_token    = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+pm_tls_insecure = true  # Set to true if you are using a self-signed certificate
 
+# VM Configuration
 num_vms          = 3
 start_vmid       = 9000
 vm_name_prefix   = "tf-vm"
-vm_node          = "pve"
-vm_template      = 9400
+vm_node          = "your-proxmox-node-name"
+vm_template      = 9400  # VMID of your template
 
-vm_memory        = 4096
-vm_cores         = 2
-vm_sockets       = 1
+# VM Resources
+vm_memory        = 4096  # RAM in MB
+vm_cores         = 2     # CPU cores per socket
+vm_sockets       = 1     # Number of CPU sockets
 
-vm_disk_storage  = "local-zfs"
-vm_disk_size     = "20G"
+# Storage Configuration  
+vm_disk_storage  = "local-zfs"  # Your storage identifier
+vm_disk_size_gb  = 20           # Disk size in GB
 
-vm_network_bridge = "vmbr0"
-vm_network_model = "virtio"
-vm_network_vlan_tag = 20
+# Network Configuration
+vm_network_bridge = "vmbr0"     # Your network bridge
+vm_network_model = "virtio"     # Network card model
+vm_network_vlan_tag = 20        # VLAN tag (set to null if no VLAN)
 
-vm_ssh_keys = "ssh-ed25519 your_ssh_key"
+# SSH Access - Replace with your public SSH key
+vm_ssh_keys = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

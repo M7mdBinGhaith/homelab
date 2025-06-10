@@ -23,7 +23,7 @@ variable "pm_tls_insecure" {
 variable "num_vms" {
   description = "Number of VMs to create."
   type        = number
-  default     = 1
+  default     = 3
 }
 
 variable "start_vmid" {
@@ -70,10 +70,10 @@ variable "vm_disk_storage" {
   type        = string
 }
 
-variable "vm_disk_size" {
-  description = "The size of the root disk (e.g., 20G, 30G)"
-  type        = string
-  default     = "20G"
+variable "vm_disk_size_gb" {
+  description = "The size of the root disk in GB"
+  type        = number
+  default     = 20
 }
 
 variable "vm_network_bridge" {
