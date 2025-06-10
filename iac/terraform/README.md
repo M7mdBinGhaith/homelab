@@ -40,7 +40,7 @@ This configuration creates multiple Proxmox VMs by cloning from a template **bui
     * `vm_network_vlan_tag`: VLAN tag (set to `null` if no VLAN is used)
 
 ### Template Requirements
-Built with packer with all these requirements met check [../packer](../packer)
+Built with packer with all these requirements met check [packer](../packer)
 - Template must exist with the VMID specified in `vm_template`
 - Template should have **cloud init** support enabled
 - Template should have **qemu guest agent** installed
