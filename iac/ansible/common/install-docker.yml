@@ -1,40 +1,61 @@
-# This playbook installs Docker on a Linux host using the convenience script provided by Docker.
-    - name: check if Docker is already installed
-      stat:
-        path: /usr/bin/docker
-      register: docker_installed
-    - name: alert if Docker is already installed
-      debug:
-        msg: "Docker is already installed on this host."
-      when: docker_installed.stat.exists
-    
-    - name: Install Docker using convenience script
-      shell: curl -sSL https://get.docker.com/ | CHANNEL=stable sh
-      args:
-        creates: /usr/bin/docker
-      when: not docker_installed.stat.exists
+# This playbook installs Docker and Docker Compose on a Linux host using official repositories.
+    - name: Include system update tasks
+      include_tasks: system-update.yml
+
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
 
     - name: Start and enable Docker service
       systemd:
         name: docker
         state: started
         enabled: yes
-      when: not docker_installed.stat.exists
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
 
     - name: Verify Docker installation
       shell: docker --version
       register: docker_version
       changed_when: false
 
-    - name: Display Docker version
-      debug:
-        msg: "Docker installed: {{ docker_version.stdout }}"
-    
-    - name: check docker service status
-      systemd:
-        name: docker
-      register: docker_status
+    - name: Verify Docker Compose installation
+      shell: docker compose version
+      register: compose_version
+      changed_when: false
 
-    - name: Display Docker service status
+    - name: Display versions
       debug:
-        msg: "Docker service status: {{ docker_status.status.ActiveState }}"
+        msg: 
+          - "Docker: {{ docker_version.stdout }}"
+          - "Docker Compose: {{ compose_version.stdout }}"
