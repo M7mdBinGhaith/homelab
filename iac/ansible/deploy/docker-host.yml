@@ -1,0 +1,8 @@
+---
+- name: Deploy Docker Host
+  hosts: all
+  become: yes
+  remote_user: "{{ ansible_user | default('debian') }}"
+  tasks:
+    - name: Include Docker installation tasks
+      include_tasks: ../common/install-docker.yml
