@@ -1,10 +1,17 @@
 # Ansible Playbooks
 
-A collection of Ansible playbooks designed to automate various tasks.
+Collection of Ansible playbooks for infrastructure automation and service deployment.
 
-## Execution Context
+## Structure
 
-These playbooks are specifically managed and executed via **Semaphore UI**:
+- **[common/](./common/)** - Shared tasks and utilities
+- **[deploy/](./deploy/)** - Infrastructure deployment playbooks  
+- **[install/](./install/)** - Service installation playbooks
+- **[maintain/](./maintain/)** - System maintenance tasks
+- **[files/](./files/)** - Configuration files and templates
 
-* **Source:** Semaphore is configured to fetch playbooks directly from this repository.
-* **Workflow:** The overall execution logic and task orchestration are defined within the Semaphore UI, not primarily within individual playbooks here.
+## Execution
+
+Playbook execution have been tested with:
+- Automation platforms (Semaphore, Kestra)
+- Command line with `ansible-playbook`
