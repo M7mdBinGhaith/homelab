@@ -1,7 +1,5 @@
 # Proxmox API Configuration
 pm_api_url      = "https://YOUR_PROXMOX_IP:8006/api2/json"
-pm_api_token_id = "your-user@pam!your-token-name"
-pm_api_token    = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 pm_tls_insecure = true  # Set to true if you are using a self-signed certificate
 
 # VM Configuration
