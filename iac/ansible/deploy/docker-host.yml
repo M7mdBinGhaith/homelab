@@ -3,6 +3,38 @@
   hosts: all
   become: yes
   remote_user: "{{ ansible_user | default('debian') }}"
+  vars:
+    dockge_install: false
+  
   tasks:
     - name: Include Docker installation tasks
-      include_tasks: ../common/install-docker.yml
+      ansible.builtin.include_tasks: ../common/install-docker.yml
+
+    - name: Create dockge directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /opt/dockge
+        - /opt/stacks
+      when: dockge_install
+
+    - name: Download dockge compose file
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/louislam/dockge/master/compose.yaml
+        dest: /opt/dockge/compose.yaml
+        force: false
+      when: dockge_install
+
+    - name: Start dockge
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/dockge
+        creates: /opt/dockge/.env
+      when: dockge_install
+
+    - name: Display dockge access URL
+      ansible.builtin.debug:
+        msg: "Dockge available at http://{{ ansible_default_ipv4.address }}:5001"
+      when: dockge_install
+  
