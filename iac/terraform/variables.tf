@@ -23,7 +23,7 @@ variable "pm_tls_insecure" {
 variable "num_vms" {
   description = "Number of VMs to create."
   type        = number
-  default     = 3
+  default     = 1
 }
 
 variable "start_vmid" {
@@ -34,7 +34,7 @@ variable "start_vmid" {
 variable "vm_name_prefix" {
   description = "Prefix for the VM name (the VMID will be appended)."
   type        = string
-  default     = "tf-vm"
+  default     = "tf-vm-dev"
 }
 
 variable "vm_node" {
@@ -97,5 +97,5 @@ variable "vm_ssh_keys" {
 variable "vm_network_vlan_tag" {
   description = "VLAN tag for the VM's network interface (optional). Set to null or omit if no tag is needed."
   type        = number
-  default     = 20 # Set to null if no VLAN tag is required
+  default     = null
 }

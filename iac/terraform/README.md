@@ -1,6 +1,6 @@
 # Terraform Proxmox VM Configuration
 
-Terraform configuration for creating Proxmox VMs using the **BPG Proxmox provider**.
+Terraform configuration for creating Proxmox VMs using the **BPG Proxmox provider** Utilizing self-managed gitlab state management.
 
 ## Overview
 
@@ -33,7 +33,7 @@ This configuration creates multiple Proxmox VMs by cloning from a template **bui
     * `vm_ssh_keys`: Public SSH key for the user specified 
 
 * **Storage & Network:**
-    * `vm_disk_storage`: Storage identifier (e.g., `local-zfs`)
+    * `vm_disk_storage`: Storage identifier (e.g., `local-lvm`)
     * `vm_disk_size_gb`: Disk size in GB (e.g., `20`)
     * `vm_network_model`: Network card model (`virtio`)
     * `vm_network_bridge`: Network bridge (e.g., `vmbr0`)
@@ -41,13 +41,21 @@ This configuration creates multiple Proxmox VMs by cloning from a template **bui
 
 ### Template Requirements
 Built with packer with all these requirements met check [packer](../packer)
-- Template must exist with the VMID specified in `vm_template`
-- Template should have **cloud init** support enabled
-- Template should have **qemu guest agent** installed
 
 ## Setup
-1. Edit `terraform.tfvars` with your environment values
-2. Initialize and apply:
+- Edit `terraform.tfvars` with required values
+- Export Required environment variables
+- Edit the `main.tf` with (backend url, project id, state name)
+
+```bash
+# Gitlab Authentication (state backend)
+export TF_HTTP_USERNAME="your-gitlab-username"
+export TF_HTTP_PASSWORD="your-gitlab-token"
+# Proxmox Authentication 
+export TF_VAR_pm_api_token_id="terraform@pam!terraform"
+export TF_VAR_pm_api_token="Your-Secret-Key"
+```
+
 
 ```bash
 terraform init    # Initialize 

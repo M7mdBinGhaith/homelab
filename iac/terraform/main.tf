@@ -5,6 +5,16 @@ terraform {
       version = "~> 0.66"
     }
   }
+
+backend "http" {
+    address        = "https://gitlab.local.domain.com/api/v4/projects/3/terraform/state/proxmox-github-demo-state"
+    lock_address   = "https://gitlab.local.domain.com/api/v4/projects/3/terraform/state/proxmox-github-demo-state/lock"
+    unlock_address = "https://gitlab.local.domain.com/api/v4/projects/3/terraform/state/proxmox-github-demo-state/lock"
+    lock_method    = "POST"
+    unlock_method  = "DELETE"
+    retry_wait_min = 5
+  
+}
 }
 
 provider "proxmox" {
@@ -50,7 +60,7 @@ resource "proxmox_virtual_environment_vm" "vm" {
   }
 
   initialization {
-    datastore_id = "local-zfs"
+    datastore_id = "local-lvm"
     user_account {
       keys     = [trimspace(var.vm_ssh_keys)]
       username = "debian"
