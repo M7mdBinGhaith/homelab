@@ -6,7 +6,7 @@
   tasks:
     # System Update Task
     - name: Run system update
-      import_tasks: ../common/system-update.yml
+      ansible.builtin.include_tasks: ../common/system-update.yml
     
     # Docker Cleanup Task
     - name: Check if Docker command exists

@@ -7,7 +7,7 @@ Reusable automation tasks for common ansible Operations or Software installtions
 Import tasks into other automations with:
 ```yaml
 - name: Import common tasks
-  import_tasks: ../common/task-name.yml
+  ansible.builtin.include_tasks: ../common/task-name.yml
 ```
 
 ## Deployment
