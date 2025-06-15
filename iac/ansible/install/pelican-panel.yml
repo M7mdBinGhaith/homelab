@@ -11,7 +11,7 @@
   tasks:
     # 1. Update system and install dependencies
     - name: Update apt cache
-      import_tasks: ../common/system-update.yml
+      ansible.builtin.include_tasks: ../common/system-update.yml
 
     - name: Install required packages for adding repositories
       apt:

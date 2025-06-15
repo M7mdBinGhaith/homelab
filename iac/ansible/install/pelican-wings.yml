@@ -39,7 +39,7 @@
     
     # Dependencies installation
     - name: system update
-      import_tasks: ../common/system-update.yml
+      ansible.builtin.include_tasks: ../common/system-update.yml
 
     - name: Install basic dependencies
       apt:
@@ -55,7 +55,7 @@
 
       # Install Docker using convenience script
     - name: Install Docker using convenience script
-      import_tasks: ../common/install-docker.yml
+      ansible.builtin.include_tasks: ../common/install-docker.yml
 
     # Install Wings
     - name: Create Wings directory

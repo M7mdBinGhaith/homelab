@@ -114,10 +114,10 @@
         fail_msg: "ERROR: Wings configuration parameters missing"
 
     - name: System update
-      import_tasks: ../common/system-update.yml
+      ansible.builtin.include_tasks: ../common/system-update.yml
 
     - name: Install Docker
-      import_tasks: ../common/install-docker.yml
+      ansible.builtin.include_tasks: ../common/install-docker.yml
 
     - name: Install basic dependencies
       apt:
