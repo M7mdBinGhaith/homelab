@@ -34,12 +34,8 @@ This configuration creates a Debian 12 template in Proxmox by:
 - ISO path format: storage:iso/filename.iso
 
 ## Setup
-1. Copy example configuration:
-```bash
-cp packer.auto.pkrvars.hcl.example packer.auto.pkrvars.hcl
-```
-2. Edit packer.auto.pkrvars.hcl with your environment values
-3. Initialize and build:
+1. Edit packer.auto.pkrvars.hcl with your environment values
+2. Initialize and build:
 ```bash
 packer init .     # Initialize plugins
 packer validate . # Validate configuration
