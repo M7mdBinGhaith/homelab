@@ -1,8 +1,18 @@
-# *Arr Stack with Traefik Docker Compose
+# Media Management Stack with Traefik
 
 ## Goal
 
-Deploy Sonarr, Radarr, Prowlarr, and Bazarr behind Traefik.
+Deploy Servarr stack behind Traefik.
+
+## What's in the Stack ?
+
+- **Services**:
+    - **Radarr**
+    - **Sonarr**
+    - **Prowlarr**
+    - **Bazzarr**
+    - **Overseerr**
+    - **Sabnzbd**
 
 ## Requires
 
@@ -13,9 +23,9 @@ Deploy Sonarr, Radarr, Prowlarr, and Bazarr behind Traefik.
 * `.env` file defining `PUID`, `PGID`, `TZ` for proper permissions and timezone setting.
 
 ## Action
-
-* **MUST:** Rename the env file and edit the values.
-* **MUST:** Ensure host volume paths exist & have correct permissions.
+*  Edit Traefik labels as required.
+*  Rename the env file and edit the values.
+*  Ensure host path exists and permissions match the UID.
 
 ## Run
 
@@ -25,8 +35,6 @@ docker-compose up -d
 ```
 
 ## Notes
-
-* Deploys Sonarr, Radarr, Prowlarr, and Bazarr.
-* Exposed via Traefik HTTPS at respective hostnames.
-* Uses **Authentik** for auth by default.
+* Expose Services Using Traefik.
+* Use Authentik for SSO.
 * Watchtower enabled for automatic updates.

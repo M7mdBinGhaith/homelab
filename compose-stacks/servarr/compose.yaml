@@ -84,6 +84,46 @@ services:
     restart: unless-stopped
     networks:
       - proxy
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Asia/Dubai
+    volumes:
+      - /nfs/apps/sabnzbd:/config
+      - /mnt/data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.local.domain.com`)
+      - traefik.http.routers.sabnzbd.entrypoints=https
+      - traefik.http.routers.sabnzbd.tls=true
+      - traefik.http.services.sabnzbd.loadbalancer.server.port=8080
+      - traefik.http.routers.sabnzbd.middlewares=middlewares-authentik@file
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      - proxy
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Asia/Dubai
+    volumes:
+      - /nfs/apps/overseerr:/config
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.overseerr.rule=Host(`overseerr.local.domain.com`)
+      - traefik.http.routers.overseerr.entrypoints=https
+      - traefik.http.routers.overseerr.tls=true
+      - traefik.http.services.overseerr.loadbalancer.server.port=5055
+      - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - proxy
+    restart: unless-stopped
 networks:
   proxy:
     external: true
