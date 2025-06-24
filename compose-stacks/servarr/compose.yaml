@@ -90,7 +90,7 @@ services:
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=Asia/Dubai
+      - TZ=${TZ}
     volumes:
       - /nfs/apps/sabnzbd:/config
       - /mnt/data:/data
@@ -111,7 +111,7 @@ services:
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-      - TZ=Asia/Dubai
+      - TZ=${TZ}
     volumes:
       - /nfs/apps/overseerr:/config
     labels:
