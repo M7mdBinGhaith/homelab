@@ -1,8 +1,8 @@
 # This playbook installs Docker and Docker Compose on a Linux host using official repositories.
     - name: Include system update tasks
-      include_tasks: system-update.yml
+      ansible.builtin.include_tasks: system-update.yml
 
-    - name: Install prerequisites
+    - name: Install prerequisites (APT)
       apt:
         name:
           - apt-transport-https
@@ -11,18 +11,37 @@
           - gnupg
           - lsb-release
         state: present
+      when: ansible_pkg_mgr == 'apt'
 
-    - name: Add Docker GPG key
+    - name: Install prerequisites (DNF)
+      dnf:
+        name:
+          - curl
+          - ca-certificates
+          - gnupg
+        state: present
+      when: ansible_pkg_mgr == 'dnf'
+
+    - name: Add Docker GPG key (APT)
       apt_key:
         url: https://download.docker.com/linux/debian/gpg
         state: present
+      when: ansible_pkg_mgr == 'apt'
 
-    - name: Add Docker repository
+    - name: Add Docker repository (APT)
       apt_repository:
         repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
         state: present
+      when: ansible_pkg_mgr == 'apt'
 
-    - name: Install Docker packages
+    - name: Add Docker repository (DNF)
+      get_url:
+        url: https://download.docker.com/linux/rhel/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: '0644'
+      when: ansible_pkg_mgr == 'dnf'
+
+    - name: Install Docker packages (APT)
       apt:
         name:
           - docker-ce
@@ -31,6 +50,18 @@
           - docker-buildx-plugin
           - docker-compose-plugin
         state: present
+      when: ansible_pkg_mgr == 'apt'
+
+    - name: Install Docker packages (DNF)
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+      when: ansible_pkg_mgr == 'dnf'
 
     - name: Start and enable Docker service
       systemd:
@@ -40,7 +71,7 @@
 
     - name: Add user to docker group
       user:
-        name: "{{ ansible_user }}"
+        name: "{{ ansible_user | default(ansible_ssh_user) | default('root') }}"
         groups: docker
         append: yes
 

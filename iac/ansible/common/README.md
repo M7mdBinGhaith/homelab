@@ -12,3 +12,6 @@ Import tasks into other automations with:
 
 ## Deployment
 Tasks are imported and executed in other workflows.
+
+## Notes
+- When importing **Install-docker:** Use environment variable `-e "ansible_user=username"` to set desired user for docker group.
