@@ -3,7 +3,20 @@
   apt:
     update_cache: yes
     cache_valid_time: 3600
+  when: ansible_pkg_mgr == 'apt'
 
 - name: Perform system upgrade
   apt:
     upgrade: dist
+  when: ansible_pkg_mgr == 'apt'
+
+- name: Update dnf cache
+  dnf:
+    update_cache: yes
+  when: ansible_pkg_mgr == 'dnf'
+
+- name: Perform system upgrade
+  dnf:
+    name: '*'
+    state: latest
+  when: ansible_pkg_mgr == 'dnf'
