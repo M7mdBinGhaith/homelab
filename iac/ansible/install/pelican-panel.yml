@@ -42,19 +42,19 @@
     - name: Install core dependencies
       apt:
         name:
-          - php8.3
-          - php8.3-cli
-          - php8.3-common
-          - php8.3-gd
-          - php8.3-mysql
-          - php8.3-mbstring
-          - php8.3-bcmath
-          - php8.3-xml
-          - php8.3-fpm
-          - php8.3-curl
-          - php8.3-zip
-          - php8.3-intl
-          - php8.3-sqlite3
+          - php8.4
+          - php8.4-cli
+          - php8.4-common
+          - php8.4-gd
+          - php8.4-mysql
+          - php8.4-mbstring
+          - php8.4-bcmath
+          - php8.4-xml
+          - php8.4-fpm
+          - php8.4-curl
+          - php8.4-zip
+          - php8.4-intl
+          - php8.4-sqlite3
           - nginx
           - tar
           - unzip
@@ -225,7 +225,7 @@
               }
               location ~ \.php$ {
                   fastcgi_split_path_info ^(.+\.php)(/.+)$;
-                  fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+                  fastcgi_pass unix:/run/php/php8.4-fpm.sock;
                   fastcgi_index index.php;
                   include fastcgi_params;
                   fastcgi_param PHP_VALUE "upload_max_filesize = 100M \n post_max_size=100M";
@@ -262,7 +262,7 @@
 
     - name: Start and enable PHP-FPM
       systemd:
-        name: php8.3-fpm
+        name: php8.4-fpm
         state: restarted
         enabled: yes
 
