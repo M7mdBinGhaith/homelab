@@ -7,65 +7,155 @@
     pelican_db_user: pelican
     pelican_db_password: somePassword
     pelican_install_dir: /var/www/pelican
+    web_user: "{{ 'www-data' if ansible_pkg_mgr == 'apt' else 'nginx' }}"
+    web_group: "{{ 'www-data' if ansible_pkg_mgr == 'apt' else 'nginx' }}"
     
   tasks:
-    # 1. Update system and install dependencies
-    - name: Update apt cache
+    # 1. Update system 
+    - name: Update System
       ansible.builtin.include_tasks: ../common/system-update.yml
 
-    - name: Install required packages for adding repositories
-      apt:
-        name:
-          - curl
-          - gnupg2
-          - software-properties-common
-          - lsb-release
-          - ca-certificates
-          - apt-transport-https
-        state: present
+    # Debian 12 specific tasks
+    - block:
+        - name: Install required packages for adding repositories
+          apt:
+            name:
+              - curl
+              - gnupg2
+              - software-properties-common
+              - lsb-release
+              - ca-certificates
+              - apt-transport-https
+            state: present
 
-    - name: Add PHP repository GPG key
-      shell: curl -sSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/php.gpg
-      args:
-        creates: /etc/apt/trusted.gpg.d/php.gpg
+        - name: Add PHP repository GPG key
+          shell: curl -sSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/php.gpg
+          args:
+            creates: /etc/apt/trusted.gpg.d/php.gpg
 
-    - name: Add PHP repository
-      apt_repository:
-        repo: "deb https://packages.sury.org/php/ {{ ansible_distribution_release }} main"
-        state: present
-        filename: php
+        - name: Add PHP repository
+          apt_repository:
+            repo: "deb https://packages.sury.org/php/ {{ ansible_distribution_release }} main"
+            state: present
+            filename: php
 
-    - name: Update apt cache after adding PHP repository
-      apt:
-        update_cache: yes
+        - name: Update apt cache after adding PHP repository
+          apt:
+            update_cache: yes
 
-    - name: Install core dependencies
-      apt:
-        name:
-          - php8.4
-          - php8.4-cli
-          - php8.4-common
-          - php8.4-gd
-          - php8.4-mysql
-          - php8.4-mbstring
-          - php8.4-bcmath
-          - php8.4-xml
-          - php8.4-fpm
-          - php8.4-curl
-          - php8.4-zip
-          - php8.4-intl
-          - php8.4-sqlite3
-          - nginx
-          - tar
-          - unzip
-          - git
-        state: present
+        - name: Install core dependencies
+          apt:
+            name:
+              - php8.4
+              - php8.4-cli
+              - php8.4-common
+              - php8.4-gd
+              - php8.4-mysql
+              - php8.4-mbstring
+              - php8.4-bcmath
+              - php8.4-xml
+              - php8.4-fpm
+              - php8.4-curl
+              - php8.4-zip
+              - php8.4-intl
+              - php8.4-sqlite3
+              - nginx
+              - tar
+              - unzip
+              - git
+            state: present
 
-    # 2. Install and Configure MariaDB
-    - name: Install MariaDB server
-      apt:
-        name: mariadb-server
-        state: present
+        - name: Install MariaDB server
+          apt:
+            name: mariadb-server
+            state: present
+
+        - name: Remove default Nginx site
+          file:
+            path: /etc/nginx/sites-enabled/default
+            state: absent
+      when: ansible_pkg_mgr == 'apt'
+    
+    
+    - block:
+        - name: Install EPEL repository
+          dnf:
+            name: epel-release
+            state: present
+
+        - name: Install Remi repository
+          dnf:
+            name: https://rpms.remirepo.net/enterprise/remi-release-9.rpm
+            state: present
+            disable_gpg_check: yes
+
+        - name: Enable PHP 8.4 module
+          shell: dnf module enable php:remi-8.4 -y
+          args:
+            creates: /etc/dnf/modules.d/php.module
+
+        - name: Install core dependencies
+          dnf:
+            name:
+              - php
+              - php-cli
+              - php-common
+              - php-gd
+              - php-mysqlnd
+              - php-mbstring
+              - php-bcmath
+              - php-xml
+              - php-fpm
+              - php-curl
+              - php-zip
+              - php-intl
+              - php-sqlite3
+              - nginx
+              - tar
+              - unzip
+              - git
+              - curl
+              - gnupg2
+              - ca-certificates
+            state: present
+
+        - name: Install MariaDB server
+          dnf:
+            name: mariadb-server
+            state: present
+
+        - name: Create PHP-FPM configuration for Pelican
+          copy:
+            dest: /etc/php-fpm.d/www-pelican.conf
+            content: |
+              [pelican]
+              user = nginx
+              group = nginx
+              listen = /var/run/php-fpm/pelican.sock
+              listen.owner = nginx
+              listen.group = nginx
+              listen.mode = 0750
+              pm = ondemand
+              pm.max_children = 9
+              pm.process_idle_timeout = 10s
+              pm.max_requests = 200
+
+        - name: Configure firewall for HTTP and HTTPS
+          command: firewall-cmd --permanent --add-service={{ item }}
+          loop:
+            - http
+            - https
+
+        - name: Reload firewall
+          command: firewall-cmd --reload
+
+        - name: Configure SELinux for web server network connections
+          command: setsebool -P {{ item }} 1
+          loop:
+            - httpd_can_network_connect
+            - httpd_execmem
+            - httpd_unified
+      when: ansible_pkg_mgr == 'dnf'
 
     - name: Start and enable MariaDB service
       systemd:
@@ -97,7 +187,7 @@
       register: db_test
       failed_when: db_test.rc != 0
 
-    # 3. Download and Configure Pelican
+   
     - name: Create Pelican directory
       file:
         path: "{{ pelican_install_dir }}"
@@ -109,8 +199,8 @@
         src: https://github.com/pelican-dev/panel/releases/latest/download/panel.tar.gz
         dest: "{{ pelican_install_dir }}"
         remote_src: yes
-        owner: www-data
-        group: www-data
+        owner: "{{ web_user }}"
+        group: "{{ web_group }}"
 
     - name: Download Composer installer
       get_url:
@@ -129,7 +219,7 @@
         mode: '0755'
 
     - name: Install Composer dependencies
-      shell: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+      shell: /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
       args:
         chdir: "{{ pelican_install_dir }}"
       environment:
@@ -141,22 +231,13 @@
     - name: Set ownership after composer install
       file:
         path: "{{ pelican_install_dir }}"
-        owner: www-data
-        group: www-data
+        owner: "{{ web_user }}"
+        group: "{{ web_group }}"
         recurse: yes
 
-    # Environment and Laravel Setup
-    - name: Copy environment file from example
-      copy:
-        src: "{{ pelican_install_dir }}/.env.example"
-        dest: "{{ pelican_install_dir }}/.env"
-        owner: www-data
-        group: www-data
-        mode: '0644'
-        remote_src: yes
-
-    - name: Generate Laravel application key
-      shell: php artisan key:generate --force
+    
+    - name: Run Pelican environment setup
+      shell: php artisan p:environment:setup
       args:
         chdir: "{{ pelican_install_dir }}"
 
@@ -178,38 +259,24 @@
     - name: Fix ownership after Laravel setup
       file:
         path: "{{ pelican_install_dir }}"
-        owner: www-data
-        group: www-data
+        owner: "{{ web_user }}"
+        group: "{{ web_group }}"
         recurse: yes
 
-    - name: Set storage permissions
-      file:
-        path: "{{ pelican_install_dir }}/storage"
-        mode: '0755'
-        recurse: yes
+    - name: Set storage and bootstrap cache permissions
+      shell: chmod -R 755 storage/* bootstrap/cache/
+      args:
+        chdir: "{{ pelican_install_dir }}"
+      become: yes
 
-    - name: Set bootstrap cache permissions
-      file:
-        path: "{{ pelican_install_dir }}/bootstrap/cache"
-        mode: '0755'
-        recurse: yes
+    - name: Set webserver ownership of Pelican directory
+      shell: chown -R {{ web_user }}:{{ web_group }} {{ pelican_install_dir }}
+      become: yes
 
-    - name: Set ownership of Pelican directory
-      file:
-        path: "{{ pelican_install_dir }}"
-        owner: www-data
-        group: www-data
-        recurse: yes
-
-    # 4. Configure Nginx
-    - name: Remove default Nginx site
-      file:
-        path: /etc/nginx/sites-enabled/default
-        state: absent
 
     - name: Create Pelican Nginx configuration
       copy:
-        dest: /etc/nginx/sites-available/pelican.conf
+        dest: "{{ '/etc/nginx/sites-available/pelican.conf' if ansible_pkg_mgr == 'apt' else '/etc/nginx/conf.d/pelican.conf' }}"
         content: |
           server {
               listen 80;
@@ -225,7 +292,7 @@
               }
               location ~ \.php$ {
                   fastcgi_split_path_info ^(.+\.php)(/.+)$;
-                  fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+                  fastcgi_pass unix:{{ '/run/php/php8.4-fpm.sock' if ansible_pkg_mgr == 'apt' else '/var/run/php-fpm/pelican.sock' }};
                   fastcgi_index index.php;
                   include fastcgi_params;
                   fastcgi_param PHP_VALUE "upload_max_filesize = 100M \n post_max_size=100M";
@@ -248,6 +315,7 @@
         src: /etc/nginx/sites-available/pelican.conf
         dest: /etc/nginx/sites-enabled/pelican.conf
         state: link
+      when: ansible_pkg_mgr == 'apt'
 
     - name: Test Nginx configuration
       shell: nginx -t
@@ -262,41 +330,41 @@
 
     - name: Start and enable PHP-FPM
       systemd:
-        name: php8.4-fpm
+        name: "{{ 'php8.4-fpm' if ansible_pkg_mgr == 'apt' else 'php-fpm' }}"
         state: restarted
         enabled: yes
 
-    # 5. Final Setup - Additional permission fixes
-    - name: Final storage permissions
-      file:
-        path: "{{ pelican_install_dir }}/storage"
-        owner: www-data
-        group: www-data
-        mode: '0755'
-        recurse: yes
+    
+    - name: Final webserver ownership
+      shell: chown -R {{ web_user }}:{{ web_group }} {{ pelican_install_dir }}
+      become: yes
 
-    - name: Final bootstrap cache permissions
-      file:
-        path: "{{ pelican_install_dir }}/bootstrap/cache"
-        owner: www-data
-        group: www-data
-        mode: '0755'
-        recurse: yes
-
+    - name: Final storage and bootstrap permissions
+      shell: chmod -R 755 storage/* bootstrap/cache/
+      args:
+        chdir: "{{ pelican_install_dir }}"
+      become: yes
+    - name : restart php and nginx
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - nginx
+        - "{{ 'php8.4-fpm' if ansible_pkg_mgr == 'apt' else 'php-fpm' }}"
     - name: Display installation completion message
       debug:
-        msg: |
-          Pelican Panel installation completed!
-          
-          Next steps:
-          1. Access the web installer at: http://{{ ansible_default_ipv4.address }}/installer
-          2. Use these database settings:
-             - Type: MySQL
-             - Host: 127.0.0.1
-             - Port: 3306
-             - Database: {{ pelican_db_name }}
-             - Username: {{ pelican_db_user }}
-             - Password: {{ pelican_db_password }}
+        msg:
+          - "Pelican Panel installation completed successfully!"
+          - ""
+          - "Next steps:"
+          - "1. Access the web installer at: http://{{ ansible_default_ipv4.address }}/installer"
+          - "2. Configure the database with these settings:"
+          - "   - Database Type: MySQL"
+          - "   - Host: 127.0.0.1"
+          - "   - Port: 3306"
+          - "   - Database Name: {{ pelican_db_name }}"
+          - "   - Username: {{ pelican_db_user }}"
+          - "   - Password: {{ pelican_db_password }}"
     - name: Clean up temporary files
       file:
         path: /tmp/composer-installer.php
