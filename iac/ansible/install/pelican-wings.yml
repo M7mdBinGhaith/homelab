@@ -7,12 +7,11 @@
     wings_data_dir: /var/lib/pelican
     # Required configuration from Panel
     panel_url: ""              # e.g., http://192.168.1.100 or https://panel.example.com
-    wings_token: ""            # Token from Panel admin 
+    wings_token: ""            # Token from Panel admin starts with peli_
     node_id: ""                # Node ID number from Panel
-    allow_insecure: false      # Set to true for HTTP connections
+    allow_insecure: false      # Set to true for HTTP connections 
 
   tasks:
-    # Configuration validation
     - name: Ensure all required variables are set
       assert:
         that:
@@ -35,29 +34,14 @@
             -e "wings_token=peli_your_token_here" \
             -e "node_id=1" \
             -e "allow_insecure=true"
-        
     
-    # Dependencies installation
     - name: system update
       ansible.builtin.include_tasks: ../common/system-update.yml
 
-    - name: Install basic dependencies
-      apt:
-        name:
-          - curl
-          - ca-certificates
-          - gnupg2
-          - sudo
-          - apt-transport-https
-          - software-properties-common
-          - lsb-release
-        state: present
-
-      # Install Docker using convenience script
-    - name: Install Docker using convenience script
+    - name: Install Docker
       ansible.builtin.include_tasks: ../common/install-docker.yml
 
-    # Install Wings
+    
     - name: Create Wings directory
       file:
         path: "{{ wings_install_dir }}"
@@ -101,7 +85,6 @@
       debug:
         msg: "Wings installed: {{ wings_version.stdout }}"
 
-    # Configure Wings using built-in command
     - name: Run Wings configuration command
       shell: |
         /usr/local/bin/wings configure \
@@ -130,7 +113,6 @@
         msg: "ERROR: Wings configuration failed - config.yml not found!"
       when: not config_file_check.stat.exists
 
-    # Create Wings Service
     - name: Create Wings systemd service
       copy:
         dest: /etc/systemd/system/wings.service
@@ -162,7 +144,6 @@
       systemd:
         daemon_reload: yes
 
-    # Storage Setup
     - name: Create Wings data directory
       file:
         path: "{{ wings_data_dir }}"
@@ -179,7 +160,6 @@
         owner: root
         group: root
 
-    # 8. Enable Swap 
     - name: Check current GRUB configuration
       shell: grep -q "swapaccount=1" /etc/default/grub || echo "not_found"
       register: grub_check
@@ -207,7 +187,6 @@
           Run: sudo systemctl reboot
       when: grub_updated is changed
 
-    # Start Wings Service
     - name: Enable and start Wings service
       systemd:
         name: wings
@@ -227,7 +206,7 @@
       debug:
         msg: "Wings service status: {{ wings_status.status.ActiveState }}"
 
-    # Summary
+    
     - name: summary
       debug:
         var: completion_message
