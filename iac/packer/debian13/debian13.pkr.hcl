@@ -34,12 +34,12 @@ variable "proxmox_api_token_secret" {
 # VM Configuration
 variable "vm_name" {
   type    = string
-  default = "debian12-template"
+  default = "debian13-template"
 }
 
 variable "template_description" {
   type    = string
-  default = "Debian 12 Template"
+  default = "Debian 13 Template"
 }
 
 variable "vm_id" {
@@ -128,7 +128,7 @@ variable "disk_format" {
 # ISO Configuration
 variable "iso_file" {
   type    = string
-  default = "local:iso/debian-12.11.0-amd64-netinst.iso"
+  default = "local:iso/debian-13.3.0-amd64-netinst.iso"
 }
 
 # Boot Configuration
